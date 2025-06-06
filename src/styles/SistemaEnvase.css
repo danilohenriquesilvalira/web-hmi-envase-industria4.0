@@ -1,0 +1,486 @@
+/* SistemaEnvase.css */
+
+/* ========= VARIÁVEIS DE CUSTOMIZAÇÃO ========= */
+/*
+  COMO USAR:
+  1. Para alterar POSIÇÕES: mude os valores das variáveis --pos-*
+  2. Para alterar TAMANHOS: mude os valores das variáveis --scale-* ou os tamanhos específicos
+  3. Para mudanças rápidas: altere direto nas variáveis abaixo
+  4. Para mudanças específicas: altere nas classes dos componentes
+  
+  EXEMPLOS:
+  - Mover enchimento para direita: --pos-enchimento: 400px;
+  - Aumentar prensa: --scale-prensa: 1.5;
+  - Altura do transporte: --transporte-height: 250px;
+*/
+:root {
+  /* Posições horizontais das estações (left) */
+  --pos-enchimento: 600px;        /* Posição X do tanque */
+  --pos-arrolhamento: 525px;      /* Posição X do arrolhador */
+  --pos-prensa: 860px;            /* Posição X da prensa */
+  
+  /* Posições verticais das estações (bottom) */
+  --pos-vertical-enchimento: 20px;    /* Eleva (+) ou abaixa (-) */
+  --pos-vertical-arrolhamento: -10px; /* Eleva (+) ou abaixa (-) */
+  --pos-vertical-prensa: 15px;        /* Eleva (+) ou abaixa (-) */
+  
+  /* Escalas dos componentes (1.0 = tamanho original) */
+  --scale-enchimento: 1.2;        /* 1.2 = 20% maior */
+  --scale-arrolhamento: 0.9;      /* 0.9 = 10% menor */
+  --scale-prensa: 1.1;            /* 1.1 = 10% maior */
+  --scale-transporte: 1.3;        /* 1.3 = 30% mais alto */
+  --scale-garrafa: 1.2;           /* 1.2 = 20% maior */
+  
+  /* Tamanhos específicos dos SVGs (forçados) */
+  --enchimento-width: 140px;      /* Largura fixa do tanque */
+  --enchimento-height: 300px;     /* Altura fixa do tanque */
+  --arrolhador-width: 180px;      /* Largura fixa do arrolhador */
+  --arrolhador-height: 140px;     /* Altura fixa do arrolhador */
+  --prensa-width: 100px;          /* Largura fixa da prensa */
+  --prensa-height: 250px;         /* Altura fixa da prensa */
+  --transporte-height: 600px;     /* Altura fixa do transporte */
+}
+
+/* Container da linha de produção */
+.linha-producao {
+  position: relative;
+  min-width: 1400px;
+  height: 600px; /* Aumentado de 500px para 600px */
+}
+
+/* Posicionamento das estações */
+.estacoes-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 350px; /* Aumentado de 264px para 350px */
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 32px;
+}
+
+/* Estação de Enchimento */
+.estacao-enchimento {
+  position: absolute;
+  left: 340px; /* POSICOES.ENCHIMENTO - 60 */
+  transform: scale(1.2); /* Aumenta 20% o tamanho */
+  transform-origin: bottom center; /* Ponto de origem da escala */
+}
+
+/* Estação de Arrolhamento */
+.estacao-arrolhamento {
+  position: absolute;
+  left: 525px; /* Alterado de 625px - move para esquerda */
+  transform: scale(0.9); /* Diminui 10% o tamanho */
+  transform-origin: bottom center;
+}
+
+/* Estação de Prensa */
+.estacao-prensa {
+  position: absolute;
+  left: 860px; /* Alterado de 960px - move para esquerda */
+  transform: scale(1.1); /* Aumenta 10% o tamanho */
+  transform-origin: bottom center;
+}
+
+/* Sistema de transporte */
+.transporte-container {
+  position: absolute;
+  bottom: 0;
+  left: 0px;
+  width: 100%;
+  transform: scaleY(var(--scale-transporte));
+  transform-origin: bottom;
+}
+
+/* Customizações individuais dos componentes */
+
+/* Garrafa */
+.garrafa-container {
+  transform: scale(var(--scale-garrafa));
+  transform-origin: bottom center;
+ /* ESQUERDA/DIREITA */
+  left: 10px;      
+  /* CIMA/BAIXO */
+  bottom: 60px; 
+}
+
+/* Tanque de Enchimento - tamanhos específicos */
+.estacao-enchimento svg {
+  width: var(--enchimento-width) !important;
+  height: var(--enchimento-height) !important;
+}
+
+/* Arrolhador - tamanhos específicos */
+.estacao-arrolhamento svg {
+  width: var(--arrolhador-width) !important;
+  height: var(--arrolhador-height) !important;
+}
+
+/* Prensa - tamanhos específicos */
+.estacao-prensa svg {
+  width: var(--prensa-width) !important;
+  height: var(--prensa-height) !important;
+}
+
+/* Transporte - altura específica */
+.transporte-container svg {
+  height: var(--transporte-height) !important;
+}
+
+/* Ajustes de posicionamento vertical */
+.estacao-enchimento {
+  position: absolute;
+  left: 340px;
+  bottom: 20px; /* Eleva a estação */
+  transform: scale(1.2);
+  transform-origin: bottom center;
+}
+
+.estacao-arrolhamento {
+  position: absolute;
+  left: 525px;
+  bottom: -10px; /* Abaixa a estação */
+  transform: scale(0.9);
+  transform-origin: bottom center;
+}
+
+.estacao-prensa {
+  position: absolute;
+  left: 860px;
+  bottom: 15px; /* Eleva um pouco */
+  transform: scale(1.1);
+  transform-origin: bottom center;
+}
+
+/* Header de controle */
+.header-controle {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.titulo-principal {
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.subtitulo {
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.contador-ciclos {
+  text-align: right;
+}
+
+.contador-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.contador-valor {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #2563eb;
+}
+
+/* Grid de status */
+.grid-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.status-item {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.status-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.status-valor {
+  font-size: 1.125rem;
+  font-weight: bold;
+}
+
+.status-operando {
+  color: #16a34a;
+}
+
+.status-parado {
+  color: #dc2626;
+}
+
+.status-etapa {
+  color: #1f2937;
+}
+
+.status-tanque {
+  color: #2563eb;
+}
+
+/* Botões de controle */
+.controles-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.botao-principal {
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-weight: 500;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.botao-iniciar {
+  background: #16a34a;
+}
+
+.botao-iniciar:hover {
+  background: #15803d;
+}
+
+.botao-parar {
+  background: #dc2626;
+}
+
+.botao-parar:hover {
+  background: #b91c1c;
+}
+
+.botao-reset {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #ea580c;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.botao-reset:hover {
+  background: #dc2626;
+}
+
+.botao-disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  color: #6b7280;
+}
+
+/* Controle de nível do tanque */
+.controle-tanque {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.controle-tanque label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.controle-tanque input[type="range"] {
+  width: 128px;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.controle-tanque input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #2563eb;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.controle-valor {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f2937;
+  width: 48px;
+}
+
+/* Linha de produção */
+.linha-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 32px; /* Aumentado de 24px para 32px */
+  overflow-x: auto;
+}
+
+.linha-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.linha-titulo {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.indicador-status {
+  margin-left: 12px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.indicador-ativo {
+  background: #16a34a;
+  animation: pulse 2s infinite;
+}
+
+.indicador-inativo {
+  background: #9ca3af;
+}
+
+/* Status da garrafa */
+.status-garrafa {
+  margin-top: 32px; /* Aumentado de 24px para 32px */
+  display: flex;
+  justify-content: center;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 8px 24px;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: bold;
+}
+
+.status-vazia {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.status-cheia {
+  background: #fefce8;
+  color: #92400e;
+}
+
+.status-finalizada {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .grid-status {
+    grid-template-columns: 1fr;
+  }
+  
+  .controles-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Animações */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Utilitárias */
+.transition-all {
+  transition: all 0.3s ease;
+}
+
+.drop-shadow-lg {
+  filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04)) drop-shadow(0 4px 3px rgba(0, 0, 0, 0.1));
+}
+
+/* ========= CLASSES UTILITÁRIAS PARA CUSTOMIZAÇÃO RÁPIDA ========= */
+
+/* Tamanhos alternativos - adicione essas classes aos componentes */
+.componente-pequeno { transform: scale(0.8) !important; }
+.componente-normal { transform: scale(1.0) !important; }
+.componente-grande { transform: scale(1.3) !important; }
+.componente-gigante { transform: scale(1.6) !important; }
+
+/* Posições verticais alternativas */
+.elevar-muito { bottom: 50px !important; }
+.elevar-pouco { bottom: 20px !important; }
+.nivel-normal { bottom: 0px !important; }
+.abaixar-pouco { bottom: -20px !important; }
+.abaixar-muito { bottom: -50px !important; }
+
+/* Larguras específicas para SVGs */
+.svg-estreito { width: 80px !important; }
+.svg-normal { width: 120px !important; }
+.svg-largo { width: 180px !important; }
+.svg-muito-largo { width: 250px !important; }
+
+/* Alturas específicas para SVGs */
+.svg-baixo { height: 120px !important; }
+.svg-medio { height: 200px !important; }
+.svg-alto { height: 300px !important; }
+.svg-muito-alto { height: 400px !important; }
+
+/* ========= GUIA PRÁTICO DE CUSTOMIZAÇÃO ========= */
+/*
+
+🎯 ONDE ALTERAR CADA COISA:
+
+1️⃣ POSIÇÃO HORIZONTAL das estações:
+   ✅ NO CSS: Altere as variáveis --pos-enchimento, --pos-arrolhamento, --pos-prensa
+   Exemplo: --pos-enchimento: 500px; (move para direita)
+
+2️⃣ POSIÇÃO VERTICAL das estações:
+   ✅ NO CSS: Altere as variáveis --pos-vertical-*
+   Exemplo: --pos-vertical-prensa: 50px; (eleva a prensa)
+
+3️⃣ TAMANHO GERAL dos componentes:
+   ✅ NO CSS: Altere as variáveis --scale-*
+   Exemplo: --scale-enchimento: 1.5; (50% maior)
+
+4️⃣ TAMANHO ESPECÍFICO dos SVGs:
+   ✅ NO CSS: Altere as variáveis de width e height específicas
+   Exemplo: --arrolhador-width: 200px;
+
+5️⃣ TAMANHO DO TRANSPORTE:
+   ✅ NO COMPONENTE: Altere o height do SVG em Transporte.tsx
+   ✅ NO CSS: Altere --transporte-height e --scale-transporte
+
+6️⃣ CUSTOMIZAÇÃO RÁPIDA:
+   ✅ NO HTML: Adicione classes utilitárias como 'componente-grande', 'elevar-muito'
+   Exemplo: <div className="estacao-prensa componente-gigante elevar-muito">
+
+📝 DICA: Use as variáveis CSS para alterações globais e consistentes!
+
+*/
