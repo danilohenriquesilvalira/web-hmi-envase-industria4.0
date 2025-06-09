@@ -16,6 +16,7 @@ interface HeaderProps {
   onReconhecerFalhas: () => void;
   onReabastecerTanque: () => void;
   tanqueBaixo: boolean;
+  sinoVisivel?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -29,7 +30,8 @@ const Header: React.FC<HeaderProps> = ({
   onResetSistema,
   onReconhecerFalhas,
   onReabastecerTanque,
-  tanqueBaixo
+  tanqueBaixo,
+  sinoVisivel
 }) => {
   return (
     <div style={{
@@ -52,16 +54,10 @@ const Header: React.FC<HeaderProps> = ({
         margin: '0 auto'
       }}>
         
-        {/* Título e Status */}
+        {/* Título sem ícone */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 21h8"></path>
-              <path d="M12 21v-4"></path>
-              <path d="M12 10v-3"></path>
-              <path d="M12 13v4"></path>
-              <path d="M8 3h8l2 4.5-2 4.5-8 0-2-4.5L8 3z"></path>
-            </svg>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {/* Removido o ícone */}
             <h1 style={{ 
               fontSize: '1.5rem', 
               fontWeight: 'bold', 
@@ -98,6 +94,7 @@ const Header: React.FC<HeaderProps> = ({
             falhas={falhas}
             onReconhecer={onReconhecerFalhas}
             onResetSistema={onResetSistema}
+            sinoVisivel={sinoVisivel}
           />
           
           {/* Botão para reabastecimento */}
@@ -133,7 +130,7 @@ const Header: React.FC<HeaderProps> = ({
             onResetSistema={onResetSistema}
           />
 
-          {/* User Profile */}
+          {/* User Profile - atualizado */}
           <UserProfile name="Danilo Lira" role="Desenvolvedor" />
         </div>
       </div>

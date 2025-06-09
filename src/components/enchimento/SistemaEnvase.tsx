@@ -4,6 +4,7 @@ import TanqueEnchimentoSlim from './TanqueEnchimento';
 import ArrolhadorSlim from './Arrolhador';
 import PrensaSlim from './Prensa';
 import TransporteSlim from './Transporte';
+import PistaoTrava from './pistao_trava';
 
 // Componentes
 import Header from './Header';
@@ -14,8 +15,9 @@ import DashboardCompact from './DashboardCompact';
 // Define a interface para o estado de uma garrafa
 interface GarrafaState {
   id: number;
-  estado: 'vazia' | 'cheia' | 'comRolha';
+  estado: 'vazia' | 'enchendo' | 'cheia' | 'comRolha';
   posicao: number;
+  nivelEnchimento: number; // 0-100% para animação realista
 }
 
 const SistemaEnvase: React.FC = () => {
@@ -25,13 +27,27 @@ const SistemaEnvase: React.FC = () => {
   const [ciclosCompletos, setCiclosCompletos] = useState(0);
   const [contadorGarrafas, setContadorGarrafas] = useState(0);
   const [dialogAberto, setDialogAberto] = useState(false);
-  const [currentDateTime, setCurrentDateTime] = useState("2025-06-06 15:22:31");
+  const [currentDateTime, setCurrentDateTime] = useState("2025-06-06 16:41:26");
+  
+  // Estado para controle do sino piscante
+  const [sinoVisivel, setSinoVisivel] = useState(true);
+  
+  // Flag para controlar se estamos em estado de falha persistente
+  const [falhaPersistente, setFalhaPersistente] = useState(false);
 
   // Estados dos equipamentos
   const [transporte, setTransporte] = useState({ ativo: false, rotacao: 0 });
   const [tanque, setTanque] = useState({ nivel: 85, pistaoAvancado: false });
   const [arrolhador, setArrolhador] = useState({ ativo: false, tampa1Visivel: true, contador: 0 });
   const [prensa, setPrensa] = useState({ ativo: false, pistaoDescido: false, contador: 0 });
+
+  // Estados dos pistões de trava (3 pistões)
+  const [pistaoEnchimento, setPistaoEnchimento] = useState({ posicao: 0 });
+  const [pistaoArrolhador, setPistaoArrolhador] = useState({ posicao: 0 });
+  const [pistaoPrensa, setPistaoPrensa] = useState({ posicao: 0 });
+
+  // Referência para o valor absoluto da rotação
+  const rotacaoAbsolutaRef = useRef(0);
 
   // Estado para falhas
   const [falhas, setFalhas] = useState<Falha[]>([]);
@@ -47,6 +63,10 @@ const SistemaEnvase: React.FC = () => {
   const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 2552);
   const [screenHeight, setScreenHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 1314);
   
+  // 🔧 CONTROLE DE FILA DE PROCESSAMENTO - SOLUÇÃO PRINCIPAL
+  const filaProcessamento = useRef<number[]>([]);
+  const processandoAtualmente = useRef<Set<number>>(new Set());
+
   // Atualiza o relógio
   useEffect(() => {
     const interval = setInterval(() => {
@@ -70,6 +90,23 @@ const SistemaEnvase: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Efeito para fazer o sino piscar quando existem falhas críticas
+  useEffect(() => {
+    const temFalhaCritica = falhas.some(f => f.tipo === 'CRITICA');
+    
+    if (temFalhaCritica || falhaPersistente) {
+      // Intervalo para alternar a visibilidade do sino (piscar)
+      const interval = setInterval(() => {
+        setSinoVisivel(prev => !prev);
+      }, 500); // Pisca a cada 500ms
+      
+      return () => clearInterval(interval);
+    } else {
+      // Quando não há falhas críticas, mantém o sino sempre visível
+      setSinoVisivel(true);
+    }
+  }, [falhas, falhaPersistente]);
+
   // 🎯 CONFIGURAÇÕES PARA TELAS ESPECÍFICAS 🎯
   const getScreenConfig = () => {
     // MONITOR GRANDE: 2552x1314
@@ -79,14 +116,19 @@ const SistemaEnvase: React.FC = () => {
         name: "Monitor Grande 2552x1314",
         enchimento: { left: 600 * escala, bottom: -30 * escala, scale: 2.5 * escala },
         arrolhamento: { left: 1200 * escala, bottom: -10 * escala, scale: 2.6 * escala },
-        prensa: { left: 1900 * escala, bottom: -10 * escala, scale: 2.8 * escala },
-        transporte: { left: -2000 * escala, bottom: -520 * escala, scaleX: 2.5 * escala, scaleY: 3.8 * escala },
+        prensa: { left: 1900 * escala, bottom: 144 * escala, scale: 2.2 * escala },
+        transporte: { left: -2000 * escala, bottom: -458 * escala, scaleX: 2.5 * escala, scaleY: 3.0 * escala },
+        pistoes: {
+          enchimento: { left: 710 * escala, bottom: -234 * escala, scale: 1.7 * escala },
+          arrolhador: { left: 1496 * escala, bottom: -234 * escala, scale: 1.7 * escala },
+          prensa: { left: 1987 * escala, bottom: -234 * escala, scale: 1.7 * escala }
+        },
         garrafa: {
           ENTRADA: 166 * escala,
-          ENCHIMENTO: 623 * escala,
+          ENCHIMENTO: 625 * escala,
           ARROLHAMENTO: 1410 * escala,
           PRENSA: 1900 * escala,
-          SAIDA: 2000 * escala,
+          SAIDA: 2200 * escala,
           bottom: -499 * escala,
           scale: 2.2 * escala
         },
@@ -102,7 +144,12 @@ const SistemaEnvase: React.FC = () => {
         enchimento: { left: 360, bottom: 5, scale: 1.7 },
         arrolhamento: { left: 750, bottom: 22, scale: 1.7 },
         prensa: { left: 1200, bottom: 20, scale: 1.8 },
-        transporte: { left: -530, bottom: -240, scaleX: 1.7, scaleY: 2.0 },
+        transporte: { left: -530, bottom: -245, scaleX: 1.7, scaleY: 2.0 },
+        pistoes: {
+          enchimento: { left: 300, bottom: 180, scale: 1.2 },
+          arrolhador: { left: 690, bottom: 180, scale: 1.2 },
+          prensa: { left: 1140, bottom: 180, scale: 1.2 }
+        },
         garrafa: {
           ENTRADA: 80,
           ENCHIMENTO: 406,
@@ -124,6 +171,11 @@ const SistemaEnvase: React.FC = () => {
       arrolhamento: { left: 450, bottom: 140, scale: 0.6 },
       prensa: { left: 600, bottom: 120, scale: 1.0 },
       transporte: { left: -150, bottom: 6, scaleX: 1.0, scaleY: 1.2 },
+      pistoes: {
+        enchimento: { left: 260, bottom: 140, scale: 0.8 },
+        arrolhador: { left: 410, bottom: 140, scale: 0.8 },
+        prensa: { left: 560, bottom: 140, scale: 0.8 }
+      },
       garrafa: {
         ENTRADA: 150,
         ENCHIMENTO: 340,
@@ -169,6 +221,11 @@ const SistemaEnvase: React.FC = () => {
       scaleX: config.transporte.scaleX,
       scaleY: config.transporte.scaleY
     },
+    pistoes: {
+      enchimento: config.pistoes.enchimento,
+      arrolhador: config.pistoes.arrolhador,
+      prensa: config.pistoes.prensa
+    },
     garrafa: {
       ENTRADA: config.garrafa.ENTRADA,
       ENCHIMENTO: config.garrafa.ENCHIMENTO,
@@ -185,17 +242,24 @@ const SistemaEnvase: React.FC = () => {
     const novasFalhas: Falha[] = [];
 
     // FALHA CRÍTICA: Tanque Vazio
-    if (tanque.nivel <= 0 && processoAtivo) {
+    if (tanque.nivel <= 0) {
       novasFalhas.push({
         codigo: 'F001',
         titulo: 'Tanque vazio - Processo parado',
         tipo: 'CRITICA',
         ativa: true
       });
+      
+      // Marcar como falha persistente até que o tanque seja reabastecido
+      setFalhaPersistente(true);
+    } 
+    // Se o tanque foi reabastecido, podemos remover o estado de falha persistente
+    else if (tanque.nivel > 20 && falhaPersistente) {
+      setFalhaPersistente(false);
     }
 
     // ALERTA: Nível Baixo
-    if (tanque.nivel > 0 && tanque.nivel <= 15 && processoAtivo) {
+    if (tanque.nivel > 0 && tanque.nivel <= 15) {
       novasFalhas.push({
         codigo: 'F002',
         titulo: `Nível baixo: ${tanque.nivel}%`,
@@ -216,7 +280,7 @@ const SistemaEnvase: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(verificarFalhas, 1000);
     return () => clearInterval(interval);
-  }, [tanque.nivel, processoAtivo, processoEmRecuperacao, transporte.ativo, contadorGarrafas]);
+  }, [tanque.nivel, processoAtivo, processoEmRecuperacao, transporte.ativo, contadorGarrafas, falhaPersistente]);
 
   // Hook para monitor de recuperação do tanque
   useEffect(() => {
@@ -228,12 +292,22 @@ const SistemaEnvase: React.FC = () => {
     }
   }, [tanque.nivel, processoEmRecuperacao]);
 
-  // Animação das rodas do transporte
+  // Animação das rodas do transporte - CORREÇÃO
   useEffect(() => {
-    if (!transporte.ativo) return;
+    if (!transporte.ativo) {
+      // Reset da rotação quando parar
+      rotacaoAbsolutaRef.current = 0;
+      return;
+    }
+    
     const interval = setInterval(() => {
-      setTransporte(prev => ({ ...prev, rotacao: prev.rotacao + 2 }));
+      // Incrementa o valor absoluto da rotação
+      rotacaoAbsolutaRef.current += 2;
+      
+      // Atualiza o estado com o valor absoluto
+      setTransporte(prev => ({ ...prev, rotacao: rotacaoAbsolutaRef.current }));
     }, 16);
+    
     return () => clearInterval(interval);
   }, [transporte.ativo]);
 
@@ -256,24 +330,51 @@ const SistemaEnvase: React.FC = () => {
     );
   };
 
-  // Função auxiliar para atualizar o estado de uma garrafa específica
-  const atualizarEstadoGarrafa = (id: number, novoEstado: 'vazia' | 'cheia' | 'comRolha') => {
-    setGarrafas(prevGarrafas =>
-      prevGarrafas.map(g =>
-        g.id === id ? { ...g, estado: novoEstado } : g
-      )
-    );
+  // 🔧 FUNÇÃO ATUALIZADA - SEM CONFLITOS DE ESTADO
+  const atualizarEstadoGarrafa = (id: number, novoEstado: 'vazia' | 'enchendo' | 'cheia' | 'comRolha', nivel?: number) => {
+    setGarrafas(prevGarrafas => {
+      const novasGarrafas = prevGarrafas.map(g => {
+        if (g.id === id) {
+          const garrafaAtualizada = { 
+            ...g, 
+            estado: novoEstado,
+            nivelEnchimento: nivel !== undefined ? nivel : g.nivelEnchimento
+          };
+          console.log(`🔄 GARRAFA ${id}: ${novoEstado} - ${garrafaAtualizada.nivelEnchimento}%`);
+          return garrafaAtualizada;
+        }
+        return g;
+      });
+      return novasGarrafas;
+    });
   };
 
-  // Adiciona uma nova garrafa à linha
-  const adicionarNovaGarrafa = () => {
+  // 🔧 CRIAÇÃO LIMPA DE GARRAFA - GARANTIA ABSOLUTA - CORRIGIDO
+  const criarGarrafaLimpa = (): number => {
+    const novoId = nextGarrafaId.current++;
+    
+    // Criar garrafa com estado explicitamente vazio
     const newGarrafa: GarrafaState = {
-      id: nextGarrafaId.current++,
+      id: novoId,
       estado: 'vazia',
       posicao: pos.garrafa.ENTRADA,
+      nivelEnchimento: 0
     };
-    setGarrafas(prev => [...prev, newGarrafa]);
-    return newGarrafa.id;
+    
+    console.log(`🆕 CRIANDO GARRAFA ${novoId} - ESTADO INICIAL LIMPO`);
+    
+    // Adicionar à fila de processamento
+    filaProcessamento.current.push(novoId);
+    
+    // Adicionar de forma isolada para evitar interferências
+    setGarrafas(prevGarrafas => {
+      console.log(`📋 TOTAL DE GARRAFAS ANTES: ${prevGarrafas.length}`);
+      const novoArray = [...prevGarrafas, newGarrafa];
+      console.log(`📋 TOTAL DE GARRAFAS APÓS: ${novoArray.length}`);
+      return novoArray;
+    });
+    
+    return novoId;
   };
 
   // Ref para controlar se há um ciclo de envase em andamento
@@ -283,6 +384,11 @@ const SistemaEnvase: React.FC = () => {
     setProcessoAtivo(false);
     isProcessingRef.current = false;
     setProcessoEmRecuperacao(true);  // Indica que o processo está esperando recuperação
+    
+    // Limpar filas
+    filaProcessamento.current = [];
+    processandoAtualmente.current.clear();
+    
     pararTodosEquipamentos();
   };
 
@@ -292,6 +398,11 @@ const SistemaEnvase: React.FC = () => {
     setProcessoAtivo(true);
     isProcessingRef.current = true;
     setTransporte(prev => ({ ...prev, ativo: true }));
+    
+    // Reiniciar sistema de fila
+    filaProcessamento.current = [];
+    processandoAtualmente.current.clear();
+    
     sequenciaEnvase();
   };
 
@@ -299,6 +410,11 @@ const SistemaEnvase: React.FC = () => {
     if (processoAtivo) {
       setProcessoAtivo(false);
       isProcessingRef.current = false;
+      
+      // Limpar filas
+      filaProcessamento.current = [];
+      processandoAtualmente.current.clear();
+      
       pararTodosEquipamentos();
       return;
     }
@@ -317,60 +433,134 @@ const SistemaEnvase: React.FC = () => {
     sequenciaEnvase();
   };
 
-  const sequenciaEnvase = async () => {
+  // 🚀 ANIMAÇÃO DE ENCHIMENTO ISOLADA E PROTEGIDA - CORRIGIDA
+  const animarEnchimentoLimpo = async (idGarrafa: number) => {
+    console.log(`🌊 INICIANDO ANIMAÇÃO LIMPA - GARRAFA ${idGarrafa}`);
+    
+    const duracaoTotal = 3000; // 3 segundos
+    const passos = 30;
+    const intervalo = duracaoTotal / passos;
+    
+    // Força uma renderização com estado vazio garantido antes de iniciar
+    setGarrafas(prevGarrafas => {
+      return prevGarrafas.map(g => 
+        g.id === idGarrafa ? { ...g, estado: 'vazia', nivelEnchimento: 0 } : g
+      );
+    });
+    
+    // Esperar essa renderização completar
+    await sleep(300);
+    
+    // Marcar como enchendo
+    atualizarEstadoGarrafa(idGarrafa, 'enchendo', 0);
+    await sleep(200);
+    
+    // Loop de animação protegido
+    for (let i = 1; i <= passos; i++) {
+      if (!isProcessingRef.current || !processandoAtualmente.current.has(idGarrafa)) {
+        console.log(`⚠️ ANIMAÇÃO CANCELADA - GARRAFA ${idGarrafa}`);
+        break;
+      }
+      
+      const nivel = (i / passos) * 100;
+      atualizarEstadoGarrafa(idGarrafa, 'enchendo', nivel);
+      
+      if (i % 8 === 0) {
+        console.log(`📊 GARRAFA ${idGarrafa}: ${Math.round(nivel)}%`);
+      }
+      
+      await sleep(intervalo);
+    }
+    
+    // Finalizar como cheia
+    atualizarEstadoGarrafa(idGarrafa, 'cheia', 100);
+    console.log(`✅ GARRAFA ${idGarrafa} - ANIMAÇÃO COMPLETA`);
+  };
+
+  // 🔧 PROCESSO DE ENCHIMENTO COMPLETAMENTE REESTRUTURADO - CORRIGIDO
+  const processoEnchimentoLimpo = async () => {
     if (!isProcessingRef.current) return;
 
-    // VERIFICAÇÃO CRÍTICA: Tanque vazio
     if (tanque.nivel <= 0) {
       pararProcessoPorFalha();
       return;
     }
 
     if (tanque.nivel < consumoPorGarrafa) {
-      setProcessoAtivo(false);
-      isProcessingRef.current = false;
       return;
     }
 
-    const idGarrafaAtual = adicionarNovaGarrafa();
-    await sleep(500);
+    // 1. CRIAR GARRAFA COM ESTADO GARANTIDAMENTE LIMPO
+    const idGarrafaAtual = criarGarrafaLimpa();
+    
+    // Marcar como em processamento
+    processandoAtualmente.current.add(idGarrafaAtual);
+    
+    console.log(`🔄 PROCESSANDO GARRAFA ${idGarrafaAtual}`);
+    
+    // 2. AGUARDAR CRIAÇÃO COMPLETA E RENDERIZAÇÃO
+    await sleep(1000); // Aumentar o tempo de espera após criar a garrafa
 
+    // 3. MOVER PARA ENCHIMENTO (garantindo estado vazio)
     moverGarrafa(idGarrafaAtual, pos.garrafa.ENCHIMENTO);
+    
+    // Confirmar explicitamente o estado vazio antes de continuar
+    atualizarEstadoGarrafa(idGarrafaAtual, 'vazia', 0);
     await sleep(2000);
 
-    setArrolhador(prev => ({ ...prev, ativo: true }));
-    setPrensa(prev => ({ ...prev, ativo: true }));
+    // 4. CONFIGURAR EQUIPAMENTOS
+    setPistaoEnchimento({ posicao: 100 });
+    await sleep(500);
 
     setTanque(prev => ({ ...prev, pistaoAvancado: true }));
-    await sleep(800);
-
-    await sleep(1500);
+    await sleep(500);
     
+    // 5. EXECUTAR ANIMAÇÃO LIMPA
+    await animarEnchimentoLimpo(idGarrafaAtual);
+    
+    // 6. FINALIZAR EQUIPAMENTOS
     setTanque(prev => ({ 
       ...prev, 
-      nivel: Math.max(0, prev.nivel - consumoPorGarrafa)
+      nivel: Math.max(0, prev.nivel - consumoPorGarrafa),
+      pistaoAvancado: false
     }));
     
-    atualizarEstadoGarrafa(idGarrafaAtual, 'cheia');
     setContadorGarrafas(prev => prev + 1);
+    await sleep(500);
 
-    setTanque(prev => ({ ...prev, pistaoAvancado: false }));
-    await sleep(800);
+    setPistaoEnchimento({ posicao: 0 });
+    await sleep(500);
 
+    // 7. MOVER PARA PRÓXIMA ESTAÇÃO
+    moverGarrafa(idGarrafaAtual, pos.garrafa.ARROLHAMENTO);
+    
+    // 8. AGENDAR PRÓXIMA GARRAFA COM CONTROLE DE FILA
+    // Esperar um pouco mais antes de agendar a próxima garrafa
     if (isProcessingRef.current) {
       setTimeout(() => {
         if (isProcessingRef.current) {
-            sequenciaEnvase();
+          console.log(`⏰ AGENDANDO PRÓXIMA GARRAFA`);
+          processoEnchimentoLimpo();
         }
-      }, 500);
+      }, 8000); // Aumentar o intervalo entre garrafas
     }
 
-    moverGarrafa(idGarrafaAtual, pos.garrafa.ARROLHAMENTO);
+    // 9. CONTINUAR COM ESTA GARRAFA
     await sleep(2000);
+    await processoArrolhamento(idGarrafaAtual);
+  };
+
+  // 🔧 PROCESSO DE ARROLHAMENTO
+  const processoArrolhamento = async (idGarrafa: number) => {
+    if (!isProcessingRef.current || !processandoAtualmente.current.has(idGarrafa)) return;
+
+    // Pistão de trava do arrolhador sobe
+    setPistaoArrolhador({ posicao: 100 });
+    await sleep(500);
 
     setArrolhador(prev => ({ ...prev, tampa1Visivel: false }));
     await sleep(1000);
-    atualizarEstadoGarrafa(idGarrafaAtual, 'comRolha');
+    atualizarEstadoGarrafa(idGarrafa, 'comRolha', 100);
     setArrolhador(prev => ({
       ...prev,
       tampa1Visivel: true,
@@ -378,8 +568,23 @@ const SistemaEnvase: React.FC = () => {
     }));
     await sleep(500);
 
-    moverGarrafa(idGarrafaAtual, pos.garrafa.PRENSA);
+    // Pistão de trava desce
+    setPistaoArrolhador({ posicao: 0 });
+    await sleep(500);
+
+    // Move para prensa
+    moverGarrafa(idGarrafa, pos.garrafa.PRENSA);
     await sleep(2000);
+    await processoPrensagem(idGarrafa);
+  };
+
+  // 🔧 PROCESSO DE PRENSAGEM
+  const processoPrensagem = async (idGarrafa: number) => {
+    if (!isProcessingRef.current || !processandoAtualmente.current.has(idGarrafa)) return;
+
+    // Pistão de trava da prensa sobe
+    setPistaoPrensa({ posicao: 100 });
+    await sleep(500);
 
     setPrensa(prev => ({ ...prev, pistaoDescido: true }));
     await sleep(1500);
@@ -390,16 +595,37 @@ const SistemaEnvase: React.FC = () => {
     }));
     await sleep(500);
 
-    moverGarrafa(idGarrafaAtual, pos.garrafa.SAIDA);
+    // Pistão de trava desce
+    setPistaoPrensa({ posicao: 0 });
+    await sleep(500);
+
+    // Move para saída
+    moverGarrafa(idGarrafa, pos.garrafa.SAIDA);
     setCiclosCompletos(prev => prev + 1);
 
-    setTimeout(() => {
-      setGarrafas(prevGarrafas => prevGarrafas.filter(g => g.id !== idGarrafaAtual));
-    }, 2000);
+    // Remover do processamento
+    processandoAtualmente.current.delete(idGarrafa);
 
-    if (!isProcessingRef.current) {
-        pararTodosEquipamentos();
-    }
+    // Remove garrafa após sair
+    setTimeout(() => {
+      setGarrafas(prevGarrafas => prevGarrafas.filter(g => g.id !== idGarrafa));
+      console.log(`🗑️ GARRAFA ${idGarrafa} REMOVIDA DO SISTEMA`);
+    }, 2000);
+  };
+
+  const sequenciaEnvase = async () => {
+    if (!isProcessingRef.current) return;
+
+    // Ativa equipamentos auxiliares
+    setArrolhador(prev => ({ ...prev, ativo: true }));
+    setPrensa(prev => ({ ...prev, ativo: true }));
+
+    // Limpar controles
+    filaProcessamento.current = [];
+    processandoAtualmente.current.clear();
+
+    // Inicia o pipeline com primeira garrafa
+    processoEnchimentoLimpo();
   };
 
   const pararTodosEquipamentos = () => {
@@ -407,8 +633,16 @@ const SistemaEnvase: React.FC = () => {
     setTanque(prev => ({ ...prev, pistaoAvancado: false }));
     setArrolhador(prev => ({ ...prev, ativo: false }));
     setPrensa(prev => ({ ...prev, ativo: false, pistaoDescido: false }));
+    // Resetar pistões de trava
+    setPistaoEnchimento({ posicao: 0 });
+    setPistaoArrolhador({ posicao: 0 });
+    setPistaoPrensa({ posicao: 0 });
     setGarrafas([]);
     nextGarrafaId.current = 0;
+    
+    // Limpar filas
+    filaProcessamento.current = [];
+    processandoAtualmente.current.clear();
   };
 
   const resetarSistema = () => {
@@ -421,7 +655,17 @@ const SistemaEnvase: React.FC = () => {
     setArrolhador(prev => ({ ...prev, contador: 0, tampa1Visivel: true }));
     setPrensa(prev => ({ ...prev, contador: 0 }));
     setTanque({ nivel: 85, pistaoAvancado: false });
+    // Resetar pistões de trava
+    setPistaoEnchimento({ posicao: 0 });
+    setPistaoArrolhador({ posicao: 0 });
+    setPistaoPrensa({ posicao: 0 });
     setFalhas([]);
+    setFalhaPersistente(false);
+    
+    // Limpar sistemas de controle
+    filaProcessamento.current = [];
+    processandoAtualmente.current.clear();
+    nextGarrafaId.current = 0;
   };
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -446,6 +690,7 @@ const SistemaEnvase: React.FC = () => {
         onReconhecerFalhas={reconhecerFalhas}
         onReabastecerTanque={reabastecerTanque}
         tanqueBaixo={tanque.nivel < 30}
+        sinoVisivel={sinoVisivel}
       />
 
       {/* Dashboard Dialog Button */}
@@ -489,7 +734,7 @@ const SistemaEnvase: React.FC = () => {
           contadorGarrafas={contadorGarrafas}
           estaProcessando={processoAtivo}
           currentTime={currentDateTime}
-          userName="Danilo Lira"
+          userName="danilohenriquesilvaliraRADAR SICK"
         />
       </DraggableDialog>
 
@@ -556,10 +801,10 @@ const SistemaEnvase: React.FC = () => {
             </div>
           </div>
 
-          {/* Renderiza MÚLTIPLAS Garrafas */}
+          {/* 🚀 RENDERIZAÇÃO LIMPA DE GARRAFAS */}
           {garrafas.map((garrafaItem) => (
             <div
-              key={garrafaItem.id}
+              key={`garrafa-${garrafaItem.id}`}
               style={{
                 position: 'absolute',
                 left: `${garrafaItem.posicao}px`,
@@ -571,6 +816,7 @@ const SistemaEnvase: React.FC = () => {
             >
               <GarrafaSlim
                 estado={garrafaItem.estado}
+                nivelEnchimento={garrafaItem.nivelEnchimento}
                 posicaoX={0}
                 animacao={true}
               />
@@ -584,9 +830,44 @@ const SistemaEnvase: React.FC = () => {
             left: `${pos.transporte.left}px`,
             width: '100%',
             transform: `scaleX(${pos.transporte.scaleX}) scaleY(${pos.transporte.scaleY})`,
-            transformOrigin: 'bottom left'
+            transformOrigin: 'bottom left',
+            overflow: 'hidden'
           }}>
             <TransporteSlim ativo={transporte.ativo} rotacaoRodas={transporte.rotacao} />
+          </div>
+
+          {/* Pistões de Trava */}
+          {/* Pistão Enchimento */}
+          <div style={{
+            position: 'absolute',
+            left: `${pos.pistoes.enchimento.left}px`,
+            bottom: `${pos.pistoes.enchimento.bottom}px`,
+            transform: `scale(${pos.pistoes.enchimento.scale})`,
+            transformOrigin: 'bottom center'
+          }}>
+            <PistaoTrava posicao={pistaoEnchimento.posicao} />
+          </div>
+
+          {/* Pistão Arrolhador */}
+          <div style={{
+            position: 'absolute',
+            left: `${pos.pistoes.arrolhador.left}px`,
+            bottom: `${pos.pistoes.arrolhador.bottom}px`,
+            transform: `scale(${pos.pistoes.arrolhador.scale})`,
+            transformOrigin: 'bottom center'
+          }}>
+            <PistaoTrava posicao={pistaoArrolhador.posicao} />
+          </div>
+
+          {/* Pistão Prensa */}
+          <div style={{
+            position: 'absolute',
+            left: `${pos.pistoes.prensa.left}px`,
+            bottom: `${pos.pistoes.prensa.bottom}px`,
+            transform: `scale(${pos.pistoes.prensa.scale})`,
+            transformOrigin: 'bottom center'
+          }}>
+            <PistaoTrava posicao={pistaoPrensa.posicao} />
           </div>
 
         </div>

@@ -1,7 +1,8 @@
 import React from 'react';
 
 interface GarrafaSlimProps {
-  estado: 'vazia' | 'cheia' | 'comRolha';
+  estado: 'vazia' | 'enchendo' | 'cheia' | 'comRolha';
+  nivelEnchimento?: number; // 0-100 para animação de enchimento
   corLiquido?: string;
   animacao?: boolean;
   posicaoX?: number;
@@ -9,6 +10,7 @@ interface GarrafaSlimProps {
 
 const GarrafaSlim: React.FC<GarrafaSlimProps> = ({
   estado,
+  nivelEnchimento = 0,
   corLiquido = '#4A90E2',
   animacao = true,
   posicaoX = 0
@@ -16,13 +18,28 @@ const GarrafaSlim: React.FC<GarrafaSlimProps> = ({
   const temRolha = estado === 'comRolha';
   const altura = temRolha ? 128 : 124;
   const viewBox = temRolha ? "0 0 44 128" : "0 0 44 124";
+  
+  // Determina se deve mostrar líquido e qual nível
+  const mostrarLiquido = estado !== 'vazia';
+  let nivelAtual = 0;
+  
+  if (estado === 'enchendo') {
+    nivelAtual = nivelEnchimento;
+  } else if (estado === 'cheia' || estado === 'comRolha') {
+    nivelAtual = 100;
+  }
+
+  // Calcula a altura do líquido baseado no nível (0-100%)
+  const alturaMaximaLiquido = temRolha ? 110 : 106; // altura total disponível para líquido
+  const alturaLiquido = (nivelAtual / 100) * alturaMaximaLiquido;
+  const yInicioLiquido = temRolha ? (127 - alturaLiquido) : (123 - alturaLiquido);
 
   return (
     <div 
       className={`absolute ${animacao ? 'transition-all duration-1000 ease-in-out' : ''}`}
       style={{ 
         left: `${posicaoX}px`, 
-        bottom: '150px', // Alterado de 120px para 150px para mais espaço
+        bottom: '150px',
         zIndex: 10 
       }}
     >
@@ -34,6 +51,21 @@ const GarrafaSlim: React.FC<GarrafaSlimProps> = ({
         xmlns="http://www.w3.org/2000/svg"
         className="drop-shadow-lg"
       >
+        <defs>
+          {/* Clip path para controlar o nível do líquido */}
+          <clipPath id={`clipLiquido-${posicaoX}`}>
+            <rect 
+              x="0" 
+              y={yInicioLiquido} 
+              width="44" 
+              height={alturaLiquido}
+              style={{
+                transition: animacao ? 'y 2s ease-out, height 2s ease-out' : 'none'
+              }}
+            />
+          </clipPath>
+        </defs>
+
         {/* Corpo da garrafa */}
         <path 
           d={temRolha 
@@ -43,16 +75,37 @@ const GarrafaSlim: React.FC<GarrafaSlimProps> = ({
           fill="#D9D9D9"
         />
 
-        {/* Líquido */}
-        {(estado === 'cheia' || estado === 'comRolha') && (
-          <path 
-            d={temRolha
-              ? "M42.7371 25.5012V41.5012C42.7371 44.5012 40.139 46.0012 40.139 46.0012V71.0012C40.139 71.0012 42.0671 73.0012 42.7371 75.5012C43.1522 77.0501 43.053 90.5778 42.9174 102.5C42.8764 106.105 42.8321 109.564 42.7976 112.5C42.7621 115.526 42.7371 117.996 42.7371 119.501C42.7369 127.295 38.2371 127.295 38.2371 127.295H5.7371C5.7371 127.295 1.23732 127.295 1.23711 119.501C1.23706 118.004 1.21735 115.531 1.18931 112.5C1.16216 109.565 1.12721 106.106 1.09474 102.5C0.986178 90.4437 0.905408 76.745 1.23711 75.5012C1.77049 73.5012 3.83518 71.0012 3.83518 71.0012V46.0012C3.83518 46.0012 1.23711 44.0012 1.23711 41.5012V25.5012C1.23711 17.0012 9.73711 17.0012 9.73711 17.0012H34.2371C34.2371 17.0012 42.7371 17.0012 42.7371 25.5012Z"
-              : "M42.7371 21.5012V37.5012C42.7371 40.5012 40.139 42.0012 40.139 42.0012V67.0012C40.139 67.0012 42.0671 69.0012 42.7371 71.5012C43.1522 73.0501 43.053 86.5778 42.9174 98.5C42.8764 102.105 42.8321 105.564 42.7976 108.5C42.7621 111.526 42.7371 113.996 42.7371 115.501C42.7369 123.295 38.2371 123.295 38.2371 123.295H5.7371C5.7371 123.295 1.23732 123.295 1.23711 115.501C1.23706 114.004 1.21735 111.531 1.18931 108.5C1.16216 105.565 1.12721 102.106 1.09474 98.5C0.986178 86.4437 0.905408 72.745 1.23711 71.5012C1.77049 69.5012 3.83518 67.0012 3.83518 67.0012V42.0012C3.83518 42.0012 1.23711 40.0012 1.23711 37.5012V21.5012C1.23711 13.0012 9.73711 13.0012 9.73711 13.0012H34.2371C34.2371 13.0012 42.7371 13.0012 42.7371 21.5012Z"
-            }
-            fill={corLiquido}
-            fillOpacity="0.8"
-          />
+        {/* Líquido com animação de enchimento */}
+        {mostrarLiquido && (
+          <g clipPath={`url(#clipLiquido-${posicaoX})`}>
+            <path 
+              d={temRolha
+                ? "M42.7371 25.5012V41.5012C42.7371 44.5012 40.139 46.0012 40.139 46.0012V71.0012C40.139 71.0012 42.0671 73.0012 42.7371 75.5012C43.1522 77.0501 43.053 90.5778 42.9174 102.5C42.8764 106.105 42.8321 109.564 42.7976 112.5C42.7621 115.526 42.7371 117.996 42.7371 119.501C42.7369 127.295 38.2371 127.295 38.2371 127.295H5.7371C5.7371 127.295 1.23732 127.295 1.23711 119.501C1.23706 118.004 1.21735 115.531 1.18931 112.5C1.16216 109.565 1.12721 106.106 1.09474 102.5C0.986178 90.4437 0.905408 76.745 1.23711 75.5012C1.77049 73.5012 3.83518 71.0012 3.83518 71.0012V46.0012C3.83518 46.0012 1.23711 44.0012 1.23711 41.5012V25.5012C1.23711 17.0012 9.73711 17.0012 9.73711 17.0012H34.2371C34.2371 17.0012 42.7371 17.0012 42.7371 25.5012Z"
+                : "M42.7371 21.5012V37.5012C42.7371 40.5012 40.139 42.0012 40.139 42.0012V67.0012C40.139 67.0012 42.0671 69.0012 42.7371 71.5012C43.1522 73.0501 43.053 86.5778 42.9174 98.5C42.8764 102.105 42.8321 105.564 42.7976 108.5C42.7621 111.526 42.7371 113.996 42.7371 115.501C42.7369 123.295 38.2371 123.295 38.2371 123.295H5.7371C5.7371 123.295 1.23732 123.295 1.23711 115.501C1.23706 114.004 1.21735 111.531 1.18931 108.5C1.16216 105.565 1.12721 102.106 1.09474 98.5C0.986178 86.4437 0.905408 72.745 1.23711 71.5012C1.77049 69.5012 3.83518 67.0012 3.83518 67.0012V42.0012C3.83518 42.0012 1.23711 40.0012 1.23711 37.5012V21.5012C1.23711 13.0012 9.73711 13.0012 9.73711 13.0012H34.2371C34.2371 13.0012 42.7371 13.0012 42.7371 21.5012Z"
+              }
+              fill={corLiquido}
+              fillOpacity="0.8"
+            />
+            
+            {/* Efeito de borbulhamento durante enchimento */}
+            {estado === 'enchendo' && nivelAtual > 10 && (
+              <>
+                {/* Bolhas animadas */}
+                <circle cx="15" cy={yInicioLiquido + 5} r="1" fill={corLiquido} fillOpacity="0.6">
+                  <animate attributeName="cy" values={`${yInicioLiquido + 5};${yInicioLiquido - 10};${yInicioLiquido + 5}`} dur="2s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="25" cy={yInicioLiquido + 8} r="0.8" fill={corLiquido} fillOpacity="0.4">
+                  <animate attributeName="cy" values={`${yInicioLiquido + 8};${yInicioLiquido - 8};${yInicioLiquido + 8}`} dur="1.5s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.4;0;0.4" dur="1.5s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="30" cy={yInicioLiquido + 3} r="0.6" fill={corLiquido} fillOpacity="0.5">
+                  <animate attributeName="cy" values={`${yInicioLiquido + 3};${yInicioLiquido - 12};${yInicioLiquido + 3}`} dur="2.5s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.5;0;0.5" dur="2.5s" repeatCount="indefinite"/>
+                </circle>
+              </>
+            )}
+          </g>
         )}
         
         {/* Contorno */}

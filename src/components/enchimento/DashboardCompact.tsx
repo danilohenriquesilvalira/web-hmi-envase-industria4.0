@@ -144,7 +144,7 @@ const DashboardCompact: React.FC<DashboardCompactProps> = ({
         border: '1px solid #e2e8f0'
       }}>
         <div>Relatório em tempo real • Atualizado {currentTime}</div>
-        <div>Operador: {userName}</div>
+        <div>Operador: Danilo Lira</div>
       </div>
 
       {/* Productivity Chart */}
